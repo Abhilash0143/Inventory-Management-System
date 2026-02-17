@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/Inbound"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model inbound_innerboxes {
+  outerbox_id  String
+  innerbox_id  String
+  expected_qty Int
+  packed_by    String
+  status       String   @default("OPEN")
+  claimed_at   DateTime @default(now()) @db.Timestamptz(6)
+  last_seen_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@id([outerbox_id, innerbox_id])
+  @@index([last_seen_at], map: "inbound_innerboxes_last_seen_idx")
+}
+
+model inbound_items {
+  id            BigInt   @id @default(autoincrement())
+  outerbox_id   String
+  innerbox_id   String
+  sku           String
+  serial_number String   @unique
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  packed_by     String?
+  session_id    BigInt?
+
+  @@index([outerbox_id, innerbox_id], map: "idx_inbound_outer_inner")
+  @@index([sku], map: "idx_inbound_sku")
+  @@index([session_id], map: "inbound_items_session_idx")
+}
+
+model inbound_sessions {
+  id           BigInt    @id @default(autoincrement())
+  outerbox_id  String
+  innerbox_id  String
+  expected_qty Int       @default(0)
+  status       String    @default("IN_PROGRESS")
+  locked_by    String
+  locked_at    DateTime  @default(now()) @db.Timestamptz(6)
+  last_seen    DateTime  @default(now()) @db.Timestamptz(6)
+  confirmed_at DateTime? @db.Timestamptz(6)
+  locked_sku   String?
+
+  @@unique([outerbox_id, innerbox_id])
+}
+
+model operators {
+  id            String   @id
+  name          String   @unique
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+  password_hash String?
+
+  @@index([name])
+}
+
+model push_subscriptions {
+  operator_name String    @id
+  subscription  Json
+  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+}

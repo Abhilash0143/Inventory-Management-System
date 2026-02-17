@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/Stockcount"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model phase1_boxes {
+  report_id     BigInt
+  room_id       BigInt
+  box_id        String
+  scan_count    Int           @default(0)
+  status        String
+  stock_reports stock_reports @relation(fields: [report_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  stock_rooms   stock_rooms   @relation(fields: [room_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([report_id, room_id, box_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model phase2_box_work {
+  report_id     BigInt
+  room_id       BigInt
+  box_id        String
+  assigned_to   String?
+  status        String        @default("InProgress")
+  stock_reports stock_reports @relation(fields: [report_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  stock_rooms   stock_rooms   @relation(fields: [room_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([report_id, box_id])
+  @@unique([report_id, box_id], map: "phase2_box_work_report_box_uniq")
+  @@index([report_id, room_id], map: "idx_phase2_room")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model phase2_lines {
+  report_id     BigInt
+  room_id       BigInt
+  box_id        String
+  sku           String
+  qty           Int
+  id            BigInt        @id @default(autoincrement())
+  stock_reports stock_reports @relation(fields: [report_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  stock_rooms   stock_rooms   @relation(fields: [room_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([report_id, room_id, box_id], map: "idx_lines_room_box")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model report_rooms {
+  report_id     BigInt
+  room_id       BigInt
+  phase1_owner  String?
+  phase1_status String        @default("NotStarted")
+  phase2_status String        @default("NotStarted")
+  stock_reports stock_reports @relation(fields: [report_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  stock_rooms   stock_rooms   @relation(fields: [room_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([report_id, room_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model stock_reports {
+  id              BigInt            @id @default(autoincrement())
+  name            String
+  status          String            @default("Pending")
+  created_by      String
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime          @default(now()) @db.Timestamptz(6)
+  phase1_boxes    phase1_boxes[]
+  phase2_box_work phase2_box_work[]
+  phase2_lines    phase2_lines[]
+  report_rooms    report_rooms[]
+}
+
+model stock_rooms {
+  id              BigInt            @id @default(autoincrement())
+  name            String            @unique
+  phase1_boxes    phase1_boxes[]
+  phase2_box_work phase2_box_work[]
+  phase2_lines    phase2_lines[]
+  report_rooms    report_rooms[]
+}
